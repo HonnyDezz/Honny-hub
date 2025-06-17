@@ -1,0 +1,326 @@
+--// HONNY HUB | SCRIPT KILL - All-in-one GUI for Muscle Legends //--
+
+--// Security System: Only allow certain UserIds to use the script
+local allowedUserIds = {
+    [5379259260] = true,   --//DoritosDezz
+    [7746509309] = true,   --//XxchrisDezzxX
+    [1495204273] = true,   --//M4th1Dezz
+    [2983179338] = true,   --//MaykelDezz
+    [2753623038] = true,   --//EddieDezz
+    [3818320344] = true,   --//HonnyDezz
+    [2976707365] = true,   --//HonnyDezz
+    [7622758396] = true,   --//Hx2s_DavidX7
+}
+
+if not allowedUserIds[game.Players.LocalPlayer.UserId] then
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "NO PUEDES EJECUTAR ESTE SCRITP",
+        Text = "Unauthorized access. Script disabled.",
+        Duration = 5
+    })
+
+    -- Destroy GUI and disable script
+    if game.CoreGui:FindFirstChild("HONNY_GUI") then
+        game.CoreGui:FindFirstChild("HONNY_GUI"):Destroy()
+    end
+
+    script:Destroy()
+    return
+end
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local LocalPlayer = Players.LocalPlayer
+
+-- Anti-AFK
+pcall(function()
+    LocalPlayer.Idled:Connect(function()
+        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end)
+end)
+
+-- Global variables
+local selectedPlayers = {}
+local isActive = false
+local deadHitsEnabled = false
+local bringConnection
+local antiTouchEnabled = false
+
+-- GUI Setup
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "HONNY_GUI"
+
+-- Toggle Button
+local ToggleButton = Instance.new("TextButton", ScreenGui)
+ToggleButton.Size = UDim2.new(0, 140, 0, 40)
+ToggleButton.Position = UDim2.new(0, 10, 0, 10)
+ToggleButton.Text = "LoopBring: OFF"
+ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+ToggleButton.TextScaled = true
+ToggleButton.Font = Enum.Font.SourceSansBold
+
+-- Minibar (when minimized)
+local MiniBar = Instance.new("TextButton", ScreenGui)
+MiniBar.Size = UDim2.new(0, 200, 0, 30)
+MiniBar.Position = UDim2.new(0, 10, 0, 60)
+MiniBar.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+MiniBar.BackgroundTransparency = 0.4
+MiniBar.Text = "HONNY HUB | SCRIPT KILL"
+MiniBar.TextColor3 = Color3.new(1, 1, 1)
+MiniBar.TextScaled = true
+MiniBar.Font = Enum.Font.SourceSansBold
+MiniBar.Visible = false
+
+-- Control Frame
+local ControlFrame = Instance.new("Frame", ScreenGui)
+ControlFrame.Size = UDim2.new(0, 300, 0, 300)
+ControlFrame.Position = UDim2.new(0, 10, 0, 60)
+ControlFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+ControlFrame.BorderSizePixel = 0
+ControlFrame.Active = true
+ControlFrame.Draggable = true
+
+-- Minimize Button
+local MinimizeButton = Instance.new("TextButton", ControlFrame)
+MinimizeButton.Size = UDim2.new(1, 0, 0, 25)
+MinimizeButton.Position = UDim2.new(0, 0, 0, 0)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+MinimizeButton.Text = "Minimize"
+MinimizeButton.TextScaled = true
+MinimizeButton.Font = Enum.Font.SourceSansBold
+
+-- LoopBring Panel
+local LoopBringPanel = Instance.new("ScrollingFrame", ControlFrame)
+LoopBringPanel.Size = UDim2.new(0.5, -5, 1, -25)
+LoopBringPanel.Position = UDim2.new(0, 0, 0, 25)
+LoopBringPanel.CanvasSize = UDim2.new(0, 0, 0, 0)
+LoopBringPanel.AutomaticCanvasSize = Enum.AutomaticSize.Y
+LoopBringPanel.ScrollBarThickness = 6
+LoopBringPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+local UIListLayout = Instance.new("UIListLayout", LoopBringPanel)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 4)
+
+-- Function to create player button
+local function addPlayerButton(player)
+    if player == LocalPlayer then return end
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 30)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.TextScaled = true
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Text = player.Name
+    btn.Parent = LoopBringPanel
+
+    btn.MouseButton1Click:Connect(function()
+        if selectedPlayers[player] then
+            selectedPlayers[player] = nil
+            btn.Text = player.Name
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        else
+            selectedPlayers[player] = true
+            btn.Text = player.Name .. " ✓"
+            btn.BackgroundColor3 = Color3.fromRGB(70, 120, 70)
+        end
+    end)
+end
+
+-- Add current players
+for _, player in ipairs(Players:GetPlayers()) do
+    addPlayerButton(player)
+end
+
+-- Detect players joining
+Players.PlayerAdded:Connect(addPlayerButton)
+
+-- Dead Hits Panel
+local DeadPanel = Instance.new("Frame", ControlFrame)
+DeadPanel.Size = UDim2.new(0.5, -5, 1, -25)
+DeadPanel.Position = UDim2.new(0.5, 5, 0, 25)
+DeadPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+-- Dead Hits Button
+local DeadButton = Instance.new("TextButton", DeadPanel)
+DeadButton.Size = UDim2.new(1, -10, 0, 40)
+DeadButton.Position = UDim2.new(0, 5, 0, 5)
+DeadButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+DeadButton.Text = "Dead Hits"
+DeadButton.TextColor3 = Color3.new(1, 1, 1)
+DeadButton.Font = Enum.Font.GothamBold
+DeadButton.TextScaled = true
+
+-- Anti Touch Button
+local AntiTouchButton = Instance.new("TextButton", DeadPanel)
+AntiTouchButton.Size = UDim2.new(1, -10, 0, 40)
+AntiTouchButton.Position = UDim2.new(0, 5, 0, 50)
+AntiTouchButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AntiTouchButton.Text = "ANTI TOUCH"
+AntiTouchButton.TextColor3 = Color3.new(1, 1, 1)
+AntiTouchButton.Font = Enum.Font.GothamBold
+AntiTouchButton.TextScaled = true
+
+-- Transparent blocker
+local observerGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+observerGui.Name = "ObserverGui"
+observerGui.ResetOnSpawn = false
+
+local blocker = Instance.new("Frame")
+blocker.Size = UDim2.new(1, 0, 1, 0)
+blocker.Position = UDim2.new(0, 0, 0, 0)
+blocker.BackgroundTransparency = 1
+blocker.BackgroundColor3 = Color3.new(0, 0, 0)
+blocker.Visible = false
+blocker.Active = true
+blocker.ZIndex = 10
+blocker.Parent = observerGui
+
+AntiTouchButton.MouseButton1Click:Connect(function()
+    antiTouchEnabled = not antiTouchEnabled
+    blocker.Visible = antiTouchEnabled
+    AntiTouchButton.Text = antiTouchEnabled and "ANTI TOUCH ✓" or "ANTI TOUCH"
+end)
+
+ToggleButton.MouseButton1Click:Connect(function()
+    isActive = not isActive
+    ToggleButton.Text = isActive and "LoopBring: ON" or "LoopBring: OFF"
+    ToggleButton.BackgroundColor3 = isActive and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(255, 80, 80)
+    if isActive then
+        startLoopBring()
+    else
+        if bringConnection then bringConnection:Disconnect() end
+    end
+end)
+
+-- Minimize & Restore
+MinimizeButton.MouseButton1Click:Connect(function()
+    ControlFrame.Visible = false
+    MiniBar.Visible = true
+    ToggleButton.Visible = false
+end)
+
+MiniBar.MouseButton1Click:Connect(function()
+    ControlFrame.Visible = true
+    MiniBar.Visible = false
+    ToggleButton.Visible = true
+end)
+
+-- Auto Equip Fist Tool
+local function autoEquipTool()
+    local backpack = LocalPlayer:WaitForChild("Backpack")
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local tool = backpack:FindFirstChild("Punch")
+    if tool then
+        tool.Parent = character
+    end
+end
+
+autoEquipTool()
+LocalPlayer.CharacterAdded:Connect(function()
+    wait(0.5)
+    autoEquipTool()
+end)
+
+-- Dead Hits Logic
+-- local deadHitsEnabled = false
+
+local function autoEquipTool()
+    local player = game.Players.LocalPlayer
+    local backpack = player:FindFirstChild("Backpack")
+    local character = player.Character or player.CharacterAdded:Wait()
+    if backpack and character then
+        local tool = backpack:FindFirstChild("Punch")
+        if tool then
+            tool.Parent = character
+        end
+    end
+end
+
+local function startAutoPunch()
+    local player = game.Players.LocalPlayer
+    local event = player:FindFirstChild("muscleEvent")
+    if not event then
+        warn("No se encontró muscleEvent.")
+        return
+    end
+
+    autoEquipTool()
+
+    task.spawn(function()
+        while deadHitsEnabled do
+            for _ = 1, 10 do -- Golpes múltiples por ciclo
+                pcall(function()
+                    event:FireServer("punch", "leftHand")
+                    event:FireServer("punch", "rightHand")
+                end)
+            end
+            task.wait(0.05) -- Pausa pequeña para estabilidad
+        end
+    end)
+end
+
+-- Conexión al botón en tu GUI
+DeadButton.MouseButton1Click:Connect(function()
+    deadHitsEnabled = not deadHitsEnabled
+    DeadButton.Text = deadHitsEnabled and "Dead Hits ✓" or "Dead Hits"
+    if deadHitsEnabled then
+        startAutoPunch()
+    end
+end)
+
+-- Restore on respawn
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    if isActive then startLoopBring() end
+    if deadHitsEnabled then startAutoPunch() end
+    blocker.Visible = antiTouchEnabled
+end)
+
+-- Auto Tropical Shake Button - AGREGAR DESPUÉS DE LA LÍNEA QUE DICE: updateButtonVisual()
+local autoTropicalEnabled = false
+
+local AutoTropicalButton = Instance.new("TextButton", FarmPanel)
+AutoTropicalButton.Size = UDim2.new(1, -10, 0, 40)
+AutoTropicalButton.Position = UDim2.new(0, 5, 0, 180)
+AutoTropicalButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AutoTropicalButton.Text = "Auto Tropical Shake"
+AutoTropicalButton.TextColor3 = Color3.new(1, 1, 1)
+AutoTropicalButton.Font = Enum.Font.GothamBold
+AutoTropicalButton.TextScaled = true
+
+-- Función para iniciar el auto consume de Tropical Shake
+local function startAutoTropicalShake()
+    task.spawn(function()
+        local player = game.Players.LocalPlayer
+        while autoTropicalEnabled do
+            local character = player.Character or player.CharacterAdded:Wait()
+            local shake = character:FindFirstChild("Tropical Shake")
+            if shake then
+                local args = {
+                    [1] = "tropicalShake",
+                    [2] = shake
+                }
+                pcall(function()
+                    player:WaitForChild("muscleEvent"):FireServer(unpack(args))
+                end)
+            end
+            wait(0.01)
+        end
+    end)
+end
+
+AutoTropicalButton.MouseButton1Click:Connect(function()
+    autoTropicalEnabled = not autoTropicalEnabled
+    AutoTropicalButton.Text = autoTropicalEnabled and "Auto Tropical Shake ✓" or "Auto Tropical Shake"
+    AutoTropicalButton.BackgroundColor3 = autoTropicalEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(50, 50, 50)
+    
+    if autoTropicalEnabled then
+        startAutoTropicalShake()
+    end
+end)
