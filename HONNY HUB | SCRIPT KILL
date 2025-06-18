@@ -10,6 +10,7 @@ local allowedUserIds = {
     [3818320344] = true,   --//HonnyDezz
     [2976707365] = true,   --//HonnyDezz
     [7622758396] = true,   --//Hx2s_DavidX7
+    [8281527336] = true,   --//MathiKingDezz
 }
 
 if not allowedUserIds[game.Players.LocalPlayer.UserId] then
